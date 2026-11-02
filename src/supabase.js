@@ -13,8 +13,8 @@ import { createClient } from "@supabase/supabase-js";
 //   URL: the Project URL (https://xxxx.supabase.co)
 //   KEY: the "anon public" key (long text starting with eyJ)
 // ============================================================
-let URL = "PASTE_YOUR_PROJECT_URL_HERE";
-let KEY = "PASTE_YOUR_ANON_PUBLIC_KEY_HERE";
+let URL = "https://yveaepoqstpggnxhmdev.supabase.co/rest/v1/";
+let KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl2ZWFlcG9xc3RwZ2dueGhtZGV2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTM2MDgxMzAsImV4cCI6MjEwOTE4NDEzMH0.O2QUivVt6ksFnPGkioQFeddF_64oCN4MShqugvgEXvs";
 
 try {
   if (typeof window !== "undefined" && window.localStorage) {
