@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { AGENT_COLORS, MONTHLY_BUDGET } from "../constants.js";
 import { getWeekLabel, hashPassword, uid } from "../lib/helpers.js";
 import { Avatar, Modal, Stat, SearchableMemberSelect } from "./ui.jsx";
+import ImportMembers from "./ImportMembers.jsx";
 
 /* ---------------- Point allocation: Type-in input ---------------- */
 function MetricInput({ db, agentId, week, metric }) {
@@ -576,6 +577,7 @@ export default function Admin({ db, user, isSuper, onActAs }) {
 
   const sections = useMemo(() => [
     { id: "quick_add", label: "Add Member", component: <QuickAdd db={db} isSuper={isSuper} myTeamId={myTeamId} /> },
+    ...(isSuper ? [{ id: "import", label: "Import members", component: <ImportMembers db={db} /> }] : []),
     { id: "points", label: "Weekly points", component: <PointsEntry db={db} agents={scopeAgents} /> },
     { id: "requests", label: `Approvals${db.pendingRequests.length ? ` (${db.pendingRequests.length})` : ""}`, component: <Approvals db={db} /> },
     { id: "badges", label: "Custom Badges", component: <CustomBadges db={db} isSuper={isSuper} /> },

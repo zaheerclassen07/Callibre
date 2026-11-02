@@ -8,13 +8,17 @@ import { createClient } from "@supabase/supabase-js";
 // ============================================================
 
 // ============================================================
-// PASTE YOUR SUPABASE PROJECT DETAILS HERE (2 lines below)
-// Supabase -> your project -> Project Settings -> API Keys
-//   URL: the Project URL (https://xxxx.supabase.co)
-//   KEY: the "anon public" key (long text starting with eyJ)
+// Supabase details come from Cloudflare, not from this file:
+// Cloudflare -> callibre -> Settings -> Build -> Variables:
+//   VITE_SUPABASE_URL       = https://xxxx.supabase.co
+//   VITE_SUPABASE_ANON_KEY  = the anon public key (starts with eyJ)
+// So you can upload a full new version of the app any time
+// without touching your keys.
 // ============================================================
-let URL = "https://yveaepoqstpggnxhmdev.supabase.co";
-let KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl2ZWFlcG9xc3RwZ2dueGhtZGV2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTM2MDgxMzAsImV4cCI6MjEwOTE4NDEzMH0.O2QUivVt6ksFnPGkioQFeddF_64oCN4MShqugvgEXvs";
+let URL = String(import.meta.env.VITE_SUPABASE_URL || "").trim()
+  .replace(/\/(rest|auth|storage|realtime)\/.*$/i, "")   // tolerate a pasted API path
+  .replace(/\/+$/, "");
+let KEY = String(import.meta.env.VITE_SUPABASE_ANON_KEY || "").trim();
 
 try {
   if (typeof window !== "undefined" && window.localStorage) {
@@ -31,7 +35,7 @@ try {
 
 // If the details haven't been pasted in yet, the app still loads and
 // shows "Not connected" instead of a blank page.
-export const isConfigured = /^https:\/\//.test(URL) && !KEY.startsWith("PASTE_");
+export const isConfigured = /^https:\/\//.test(URL) && KEY.length > 20;
 export const supabase = createClient(isConfigured ? URL : "https://not-configured.supabase.co", isConfigured ? KEY : "not-configured");
 
 // True when an error means "this table doesn't exist yet"
@@ -51,7 +55,7 @@ export function isMissingTableError(err) {
 export function friendlyError(err) {
   const msg = String((err && err.message) || err || "");
   if (!isConfigured) {
-    return "The app isn't linked to a Supabase project yet. Paste the Project URL and anon key into src/supabase.js.";
+    return "The app isn't linked to a Supabase project yet. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in Cloudflare (Settings → Build → Variables), then redeploy.";
   }
   if (/failed to fetch|networkerror|load failed|network request failed/i.test(msg)) {
     return "Can't reach the database. Check your internet connection, then press Retry. Nothing has been saved while offline.";

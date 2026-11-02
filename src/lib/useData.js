@@ -367,6 +367,26 @@ export function useData(user) {
   const unassignBadge = (badgeId, targetType, targetId) =>
     run(supabase.from("assigned_badges").delete().eq("badge_id", badgeId).eq("target_type", targetType).eq("target_id", targetId));
 
+  // --- Bulk import (teams, agents, logins) in one go ---
+  const bulkImport = async ({ teams: newTeams = [], agents: newAgents = [], users: newUsers = [] }) => {
+    const steps = [
+      ["teams", newTeams],
+      ["agents", newAgents],
+      ["pp_users", newUsers]
+    ];
+    for (const [table, rows] of steps) {
+      if (!rows.length) continue;
+      const { error: e } = await supabase.from(table).insert(rows);
+      if (e) {
+        alert(`Import stopped while adding ${table === "pp_users" ? "logins" : table}. ` + friendlyError(e));
+        await loadAll();
+        return false;
+      }
+    }
+    await loadAll();
+    return true;
+  };
+
   // --- Inbound Service Drive ---
   const saveDriveScores = (rows) =>
     run(supabase.from("drive_scores").upsert(rows.map((r) => ({ ...r, updated_at: new Date().toISOString() })), { onConflict: "month,agent_id" }));
@@ -376,7 +396,7 @@ export function useData(user) {
     run(supabase.from("drive_rules").upsert({ id: "main", rules, updated_at: new Date().toISOString() }, { onConflict: "id" }));
 
   return {
-    driveRules, driveScores, driveCentre, saveDriveScores, saveDriveCentre, saveDriveRules,
+    driveRules, driveScores, driveCentre, saveDriveScores, saveDriveCentre, saveDriveRules, bulkImport,
     // state
     teams, agents, metrics, weeklyEntries, prizes, redemptions, requests,
     users, announcements, budgetHistory, quests, kudos, loading, error, loadAll,

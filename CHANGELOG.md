@@ -1,5 +1,18 @@
 # Callibre change log
 
+## v3.4.0 (2 Nov 2026)
+- Supabase URL and key now live in Cloudflare build variables (VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY), so a full new version can be uploaded any time without touching keys.
+- Import members (Admin, Super Admin): paste from Excel or upload a CSV of names. Creates agents, teams and logins in one go, skips duplicates, and lets you download the login list.
+- Service Drive scores can be pasted from Excel or uploaded as CSV (matched by name or employee ID), plus a ready-made template per month.
+- Service Drive now has Leaderboard (podium, month or whole drive), Teams (winning team worked out automatically) and Budget (planned vs spent, editable by Super Admin, CSV export).
+- Winning team needs at least 3 agents scored (adjustable) so a one-person team can't win.
+- Grand prize standings show running totals during the drive.
+- Team leaders only see and enter their own team's scores. Only the Super Admin edits centre ASA/answer rate, rules and budget.
+- Agents never see who is ineligible on leaderboards (protects QA and warning details).
+- Unsaved scores are protected when switching month; scores are checked before saving.
+- Fixed: centre answer rate could be wiped while typing.
+- Helper widget (👼) now shows for everyone: admins get drive progress and shortcuts; agents get their drive score, rank and quick kudos.
+
 ## v3.3.1 (2 Nov 2026)
 - Set up for a brand new Supabase project: one script, sql/new-project-setup.sql, creates all 18 tables, starter data and the superadmin login.
 - Supabase details now go in 2 marked lines in src/supabase.js. If they're missing, the app says so instead of showing a blank page.

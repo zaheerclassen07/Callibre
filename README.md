@@ -35,5 +35,6 @@ npm run build      # production build to dist/
 Every commit to the `main` branch on GitHub deploys automatically.
 
 - Cloudflare builds with `npm run build` and serves `./dist` (see `wrangler.jsonc`).
-- Data lives in Supabase (`src/supabase.js`). No database changes are needed to redeploy.
+- Data lives in Supabase. The Project URL and anon key are set once in Cloudflare: Settings → Build → Variables, as `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`.
+- New database tables (if a release needs any) are in `sql/`. A new Supabase project only needs `sql/new-project-setup.sql`.
 - Release routine: bump `src/version.js`, add a line to `CHANGELOG.md`, commit.

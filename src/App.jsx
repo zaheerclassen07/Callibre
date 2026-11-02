@@ -10,7 +10,8 @@ import Leaderboard from "./components/Leaderboard.jsx";
 import Prizes from "./components/Prizes.jsx";
 import Admin from "./components/Admin.jsx";
 import Settings from "./components/Settings.jsx";
-import Drive from "./components/Drive.jsx";
+import Drive, { defaultDriveMonth } from "./components/Drive.jsx";
+import { DRIVE_MONTHS, mergeRules, metricPoints, monthResults } from "./lib/drive.js";
 import { Bell } from "lucide-react";
 
 export default function App() {
@@ -312,6 +313,7 @@ function Shell({ user, realUser, viewingAs, onActAs, onExitActingAs, brand, save
   // Floating "back to top" button - shows once the page has scrolled down a
   // reasonable distance, since some admin/agent pages get long.
   const [showTopBtn, setShowTopBtn] = useState(false);
+  const [driveView, setDriveView] = useState("results");
   useEffect(() => {
     const onScroll = () => setShowTopBtn(window.scrollY > 400);
     window.addEventListener("scroll", onScroll, { passive: true });
@@ -620,7 +622,7 @@ function Shell({ user, realUser, viewingAs, onActAs, onExitActingAs, brand, save
           <>
             {tab === "dash" && <Dashboard db={db} agent={myAgent} readOnly={viewingAs?.mode === "readonly"} />}
             {tab === "kudos" && <Kudos db={db} user={user} agent={myAgent} />}
-            {tab === "drive" && <Drive db={db} user={user} agent={myAgent} isAdmin={isAdmin} isSuper={isSuper} readOnly={viewingAs?.mode === "readonly"} />}
+            {tab === "drive" && <Drive db={db} user={user} agent={myAgent} isAdmin={isAdmin} isSuper={isSuper} readOnly={viewingAs?.mode === "readonly"} view={driveView} setView={setDriveView} />}
             {tab === "board" && <Leaderboard db={db} myAgentId={user.agent_id} />}
             {tab === "prizes" && <Prizes db={db} user={user} agent={myAgent} isAdmin={isAdmin} readOnly={viewingAs?.mode === "readonly"} />}
             {tab === "admin" && isAdmin && <Admin db={db} user={user} isSuper={isSuper} onActAs={onActAs} />}
@@ -681,7 +683,7 @@ function Shell({ user, realUser, viewingAs, onActAs, onExitActingAs, brand, save
         </button>
       )}
 
-      {myAgent && <HelperAngel db={db} agent={myAgent} setTab={setTab} />}
+      <HelperAngel db={db} user={user} agent={myAgent} isAdmin={isAdmin} isSuper={isSuper} setTab={setTab} setDriveView={setDriveView} />
     </div>
   );
 }
@@ -692,14 +694,29 @@ function Shell({ user, realUser, viewingAs, onActAs, onExitActingAs, brand, save
    so the two never collide). Click to pop open quick actions:
    check your points, send a fast kudos, or jump to a tab.
    ============================================================ */
-function HelperAngel({ db, agent, setTab }) {
+function HelperAngel({ db, user, agent, isAdmin, isSuper, setTab, setDriveView }) {
   const [open, setOpen] = useState(false);
   const [msg, setMsg] = useState("");
   const [toId, setToId] = useState("");
   const [sending, setSending] = useState(false);
 
-  const teammates = db.agents.filter((a) => a.id !== agent.id);
-  const avail = db.agentAvailPts(agent.id);
+  const R = mergeRules(db.driveRules);
+  const month = defaultDriveMonth();
+  const monthName = DRIVE_MONTHS.find((m) => m.key === month)?.label || "";
+  const scope = isAdmin && !isSuper && user.team_id ? db.agents.filter((a) => a.team_id === user.team_id) : db.agents;
+  const scored = scope.filter((a) => metricPoints(db.driveScores.find((x) => x.month === month && x.agent_id === a.id), R)).length;
+  const myRow = agent ? db.driveScores.find((x) => x.month === month && x.agent_id === agent.id) : null;
+  const myPts = metricPoints(myRow, R);
+  const myRank = agent ? monthResults(month, db.driveScores, db.agents, R).ranked.find((r) => r.agent.id === agent.id)?.rank : null;
+
+  const teammates = agent ? db.agents.filter((a) => a.id !== agent.id) : [];
+  const avail = agent ? db.agentAvailPts(agent.id) : 0;
+  const go = (tab, view) => { setTab(tab); if (view) setDriveView(view); setOpen(false); window.scrollTo({ top: 0 }); };
+  const goImport = () => {
+    setTab("admin"); setOpen(false);
+    setTimeout(() => document.getElementById("admin-sec-import")?.scrollIntoView({ behavior: "smooth", block: "start" }), 250);
+  };
+  const firstName = (agent?.name || user.display_name || user.username || "").split(" ")[0];
 
   const sendQuickKudos = async () => {
     if (!toId) return alert("Pick who it's for!");
@@ -707,7 +724,7 @@ function HelperAngel({ db, agent, setTab }) {
     const receiver = db.agents.find((a) => a.id === toId);
     if (!receiver) return;
     setSending(true);
-    const ok = await db.addKudos({ sender_name: agent.name, receiver_name: receiver.name, message: msg.trim(), emoji: "👼" });
+    const ok = await db.addKudos({ sender_id: agent.id, sender_name: agent.name, receiver_id: receiver.id, receiver_name: receiver.name, message: msg.trim(), emoji: "👼" });
     setSending(false);
     if (ok) {
       setMsg("");
@@ -715,6 +732,9 @@ function HelperAngel({ db, agent, setTab }) {
       alert("Sent! Your kudos is on its way. ✨");
     }
   };
+
+  const tile = { background: "var(--navy3)", borderRadius: 10, padding: "10px 12px", marginBottom: 10, textAlign: "center" };
+  const big = { fontFamily: "'Bebas Neue'", fontSize: 26, color: "var(--accent)", lineHeight: 1 };
 
   return (
     <>
@@ -740,36 +760,58 @@ function HelperAngel({ db, agent, setTab }) {
           }}
         >
           <div className="spread" style={{ marginBottom: 10 }}>
-            <div style={{ fontWeight: 700 }}>👼 Hey {agent.name.split(" ")[0]}!</div>
+            <div style={{ fontWeight: 700 }}>👼 Hey {firstName}!</div>
             <button className="btn btn-ghost btn-sm" onClick={() => setOpen(false)}>✕</button>
           </div>
 
-          <div style={{ background: "var(--navy3)", borderRadius: 10, padding: "10px 12px", marginBottom: 12, textAlign: "center" }}>
-            <div style={{ fontFamily: "'Bebas Neue'", fontSize: 26, color: "var(--accent)", lineHeight: 1 }}>{avail}</div>
-            <div className="muted" style={{ fontSize: 11 }}>points available</div>
-          </div>
+          {isAdmin && (
+            <>
+              <div style={tile}>
+                <div style={big}>{scored} / {scope.length}</div>
+                <div className="muted" style={{ fontSize: 11 }}>agents with {monthName} drive scores</div>
+              </div>
+              <div className="flex" style={{ gap: 8, marginBottom: 8 }}>
+                <button className="btn btn-sm" style={{ flex: 1 }} onClick={() => go("drive", "enter")}>✏️ Enter scores</button>
+                <button className="btn btn-ghost btn-sm" style={{ flex: 1 }} onClick={() => go("drive", "results")}>🏆 Results</button>
+              </div>
+              <div className="flex" style={{ gap: 8, marginBottom: agent ? 12 : 0 }}>
+                {isSuper && <button className="btn btn-ghost btn-sm" style={{ flex: 1 }} onClick={goImport}>📥 Import members</button>}
+                <button className="btn btn-ghost btn-sm" style={{ flex: 1 }} onClick={() => go("admin")}>
+                  ✅ Approvals{db.pendingRequests.length ? ` (${db.pendingRequests.length})` : ""}
+                </button>
+              </div>
+            </>
+          )}
 
-          <div className="lbl">Quick kudos</div>
-          <select className="input" style={{ marginBottom: 8 }} value={toId} onChange={(e) => setToId(e.target.value)}>
-            <option value="">Who's it for?</option>
-            {teammates.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
-          </select>
-          <input
-            className="input"
-            style={{ marginBottom: 8 }}
-            placeholder="A quick thank you..."
-            maxLength={120}
-            value={msg}
-            onChange={(e) => setMsg(e.target.value)}
-          />
-          <button className="btn" style={{ width: "100%", marginBottom: 12 }} disabled={sending} onClick={sendQuickKudos}>
-            {sending ? "Sending…" : "Send kudos 🚀"}
-          </button>
+          {agent && (
+            <>
+              <div className="flex" style={{ gap: 8 }}>
+                <div style={{ ...tile, flex: 1 }}>
+                  <div style={big}>{avail}</div>
+                  <div className="muted" style={{ fontSize: 11 }}>points available</div>
+                </div>
+                <div style={{ ...tile, flex: 1, cursor: "pointer" }} onClick={() => go("drive", "results")} title="Open Service Drive">
+                  <div style={big}>{myPts ? myPts.total : "–"}</div>
+                  <div className="muted" style={{ fontSize: 11 }}>{monthName} drive{myRank ? ` · #${myRank}` : ""}</div>
+                </div>
+              </div>
 
-          <div className="flex" style={{ gap: 8 }}>
-            <button className="btn btn-ghost btn-sm" style={{ flex: 1 }} onClick={() => { setTab("dash"); setOpen(false); }}>🏠 Dashboard</button>
-            <button className="btn btn-ghost btn-sm" style={{ flex: 1 }} onClick={() => { setTab("prizes"); setOpen(false); }}>🎁 Prizes</button>
-          </div>
+              <div className="lbl">Quick kudos</div>
+              <select className="input" style={{ marginBottom: 8 }} value={toId} onChange={(e) => setToId(e.target.value)}>
+                <option value="">Who's it for?</option>
+                {teammates.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+              </select>
+              <input className="input" style={{ marginBottom: 8 }} placeholder="A quick thank you..." maxLength={120} value={msg} onChange={(e) => setMsg(e.target.value)} />
+              <button className="btn" style={{ width: "100%", marginBottom: 12 }} disabled={sending} onClick={sendQuickKudos}>
+                {sending ? "Sending…" : "Send kudos 🚀"}
+              </button>
+
+              <div className="flex" style={{ gap: 8 }}>
+                <button className="btn btn-ghost btn-sm" style={{ flex: 1 }} onClick={() => go("drive", "board")}>📊 Drive board</button>
+                <button className="btn btn-ghost btn-sm" style={{ flex: 1 }} onClick={() => go("prizes")}>🎁 Prizes</button>
+              </div>
+            </>
+          )}
         </div>
       )}
 
