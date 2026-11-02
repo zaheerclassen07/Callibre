@@ -1,10 +1,9 @@
 {
-  // Cloudflare Workers static site. Cloudflare runs `npm run build`,
-  // then serves the built app from ./dist.
+  // Callibre: single-file app. No build step; Cloudflare serves the files as they are.
   "name": "callibre",
   "compatibility_date": "2026-10-01",
   "assets": {
-    "directory": "./dist",
+    "directory": "./",
     "not_found_handling": "single-page-application"
   }
 }
