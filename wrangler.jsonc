@@ -1,0 +1,10 @@
+{
+  // Cloudflare Workers static site. Cloudflare runs `npm run build`,
+  // then serves the built app from ./dist.
+  "name": "callibre",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    "directory": "./dist",
+    "not_found_handling": "single-page-application"
+  }
+}
